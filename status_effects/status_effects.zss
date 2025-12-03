@@ -1,0 +1,418 @@
+# == Status Effects Module v 0.0.1 == #
+#
+#	by dionednd
+#
+
+# == Changelog == #
+#
+#	v 0.0.1
+#	- Added MoveHit Activated Status Effects (DISABLED)
+#	- Added GetHit Activated Status Effects (DISABLED)
+#	- Added Apply Activated Status Effects
+#	- Added 2 Buffs and 6 Debuffs
+
+# == Planned Stuff == #
+#
+#	- Fortify Buff (reduces incoming damage)
+#	- Armor Buff (applies super armor)
+#	- Heal Buff(heals life once equal to map value.)
+#	- Invisible Buff (makes the player invisible to semi visible depending on the player's velocity.)
+#	- Untouchable Buff (player can't get hit)
+#	- Alert Buff (makes the player auto guard)
+#	- Rage Buff? (takes away player input and makes AI control the player's character. if they're already an AI, increase AI level to 8. this increases damage by 200%.)
+#	- Fearless Buff (disables Fear Debuff)
+#	- Purify Buff (resets all status effects regardless if positive or negative.)
+#	- Focused Buff (next attack is guaranteed to crit as long as the buff is still active.)
+#
+#	- True Damage Debuff (deals damage once equal to map value. unaffected by defense.)
+#	- Lazy Debuff (slows down the player during attack states)
+#	- Taunted Debuff (forces the player to walk towards the enemy while disabling their input)
+#	- Possessed Debuff (takes away player input and makes AI control the player's character. if they're already an AI, decrease AI level to 1.)
+#	- Stunned Debuff (puts the player inside a stunned state)
+#	- Lifebane Debuff (reduces healing down to 50%. affects all healing including lifeadd.)
+#
+#	- Visual Effects for every status effect
+#	- Sounds
+#
+#	- Merge Critical Hit System to the module (crit chance + crit damage)
+
+# == How To Install == #
+#
+#	1. Open your config.ini
+#	2. look for States in [Common]
+#	3. add ", data/status_effects/status_effects.zss" to your states.
+
+# == Disclaimer == #
+#
+#	please do note that status effects do not take effect on attached characters and helpers.
+#
+#	THERE ARE NO VISUAL EFFECTS YET.
+#	MORE STATUS EFFECTS AND VISUAL EFFECTS WILL BE ADDED LATER.
+
+# == Usage == #
+#
+#	set maps in your players states either by redirecting to the target or not depending on the desired result.
+#	to set maps, you first need to learn the activation types.
+#
+#	ACTIVATION TYPES:
+#	1. MoveHit Type (will apply the effect to the user with the map as soon as their move hits.)
+#	2. GetHit Type (will apply the effect to the user with the map as soon as they get hit.)
+#	3. Apply Type (will apply the effect to the user with the map as soon as possible.)
+#
+#	using these Activation types, you will be able to apply status effects.
+#
+#	STATUS EFFECTS:
+#	- Buffs
+#		- Regen (regenerates the player's life)
+#		- Mana Regen (regenerates the player's meter)
+#
+#	- Debuffs
+#		- Burn (deals move damage overtime the less you move)
+#		- Poison (deals more damage overtime the more you move)
+#		- Freeze (freezes the player in place until duration expires or player gets hit)
+#		- Confused (Inverts the player's input)
+#		- Fear (disables the player's attack inputs)
+#		- Decay (drains the player's meter)
+#
+#	Map Names for Activation Types:
+#	MoveHit_[effect] (DISABLED)
+#	GetHit_[effect] (DISABLED)
+#	Apply_[effect]
+#
+#	Map Names for Effects:
+#	[activation]_Regen
+#	[activation]_ManaRegen
+#	[activation]_Burn
+#	[activation]_Poison
+#	[activation]_Freeze
+#	[activation]_Confused
+#	[activation]_Fear
+#	[activation]_Decay
+#
+#	Example in an attack state:
+#	if MoveHitVar(frame)
+#	{
+#		mapSet{map:"Apply_Burn";value: 60;redirectid:enemy, id}
+#	}
+#
+#	Result: Enemy gets burn status effect for 60 frames as soon as they get hit.
+#	if duration is set to -1, the effect will be enabled until the same effect is applied with a duration greater than or equal to 0.
+#
+#	TIPS:
+#	MoveHit & GetHit activation types are more suited for applying status effects to yourself on hit.
+#	Apply is more versatile. (Hence why the other two were disabled.)
+#
+#	I might remove MoveHit & GetHit if nobody finds them useful. (I already did)
+
+# == Functions == #
+
+[Function ResetStatus()]
+ignorehitpause{
+	# MoveHits
+		# Buffs
+		map(MoveHit_Regen) := 0;
+		map(MoveHit_ManaRegen) := 0;
+
+		# Debuffs
+		map(MoveHit_Burn) := 0;
+		map(MoveHit_Poison) := 0;
+		map(MoveHit_Freeze) := 0;
+		map(MoveHit_Confused) := 0;
+		map(MoveHit_Fear) := 0;
+		map(MoveHit_Decay) := 0;
+
+	# GetHits
+		# Buffs
+		map(GetHit_Regen) := 0;
+		map(GetHit_ManaRegen) := 0;
+
+		# Debuffs
+		map(GetHit_Burn) := 0;
+		map(GetHit_Poison) := 0;
+		map(GetHit_Freeze) := 0;
+		map(GetHit_Confused) := 0;
+		map(GetHit_Fear) := 0;
+		map(GetHit_Decay) := 0;
+
+	# Apply
+		# Buffs
+		map(Apply_Regen) := 0;
+		map(Apply_ManaRegen) := 0;
+	
+		# Debuffs
+		map(Apply_Burn) := 0;
+		map(Apply_Poison) := 0;
+		map(Apply_Freeze) := 0;
+		map(Apply_Confused) := 0;
+		map(Apply_Fear) := 0;
+		map(Apply_Decay) := 0;
+
+	# Player
+		# Buffs
+		map(Regen) := 0;
+		map(ManaRegen) := 0;
+	
+		# Debuffs
+		map(Burn) := 0;
+		map(Poison) := 0;
+		map(Freeze) := 0;
+		map(Confused) := 0;
+		map(Fear) := 0;
+		map(Decay) := 0;
+}
+[Function MoveHit()]
+ignorehitpause{
+	# MoveHits
+		# Buffs
+		if map(MoveHit_Regen) != 0
+		{
+			map(Regen) := cond(map(MoveHit_Regen) = -1,map(MoveHit_Regen),cond(map(Regen) = -1, map(MoveHit_Regen),map(Regen) + map(MoveHit_Regen)));
+			map(MoveHit_Regen) := 0;
+		}
+		
+		if map(MoveHit_ManaRegen) != 0
+		{
+			map(ManaRegen) := cond(map(MoveHit_ManaRegen) = -1,map(MoveHit_ManaRegen),cond(map(ManaRegen) = -1, map(MoveHit_ManaRegen),map(ManaRegen) + map(MoveHit_ManaRegen)));
+			map(MoveHit_ManaRegen) := 0;
+		}
+
+		# Debuffs
+		if map(MoveHit_Burn) != 0
+		{
+			map(Burn) := cond(map(MoveHit_Burn) = -1,map(MoveHit_Burn),cond(map(Burn) = -1, map(MoveHit_Burn),map(Burn) + map(MoveHit_Burn)));
+			map(MoveHit_Burn) := 0;
+		}
+		if map(MoveHit_Poison) != 0
+		{
+			map(Poison) := cond(map(MoveHit_Poison) = -1,map(MoveHit_Poison),cond(map(Poison) = -1, map(MoveHit_Poison),map(Poison) + map(MoveHit_Poison)));
+			map(MoveHit_Poison) := 0;
+		}
+		if map(MoveHit_Freeze) != 0
+		{
+			map(Freeze) := cond(map(MoveHit_Freeze) = -1,map(MoveHit_Freeze),cond(map(Freeze) = -1, map(MoveHit_Freeze),map(Freeze) + map(MoveHit_Freeze)));
+			map(MoveHit_Freeze) := 0;
+		}
+		if map(MoveHit_Confused) != 0
+		{
+			map(Confused) := cond(map(MoveHit_Confused) = -1,map(MoveHit_Confused),cond(map(Confused) = -1, map(MoveHit_Confused),map(Confused) + map(MoveHit_Confused)));
+			map(MoveHit_Confused) := 0;
+		}
+		if map(MoveHit_Fear) != 0
+		{
+			map(Fear) := cond(map(MoveHit_Fear) = -1,map(MoveHit_Fear),cond(map(Fear) = -1, map(MoveHit_Fear),map(Fear) + map(MoveHit_Fear)));
+			map(MoveHit_Fear) := 0;
+		}
+		if map(MoveHit_Decay) != 0
+		{
+			map(Decay) := cond(map(MoveHit_Decay) = -1,map(MoveHit_Decay),cond(map(Decay) = -1, map(MoveHit_Decay),map(Decay) + map(MoveHit_Decay)));
+			map(MoveHit_Decay) := 0;
+		}
+}
+[Function GetHit()]
+ignorehitpause{
+	# GetHits
+		# Buffs
+		if map(GetHit_Regen) != 0
+		{
+			map(Regen) := cond(map(GetHit_Regen) = -1,map(GetHit_Regen),cond(map(Regen) = -1, map(GetHit_Regen),map(Regen) + map(GetHit_Regen)));
+			map(GetHit_Regen) := 0;
+		}
+		
+		if map(GetHit_ManaRegen) != 0
+		{
+			map(ManaRegen) := cond(map(GetHit_ManaRegen) = -1,map(GetHit_ManaRegen),cond(map(ManaRegen) = -1, map(GetHit_ManaRegen),map(ManaRegen) + map(GetHit_ManaRegen)));
+			map(GetHit_ManaRegen) := 0;
+		}
+
+		# Debuffs
+		if map(GetHit_Burn) != 0
+		{
+			map(Burn) := cond(map(GetHit_Burn) = -1,map(GetHit_Burn),cond(map(Burn) = -1, map(GetHit_Burn),map(Burn) + map(GetHit_Burn)));
+			map(GetHit_Burn) := 0;
+		}
+		if map(GetHit_Poison) != 0
+		{
+			map(Poison) := cond(map(GetHit_Poison) = -1,map(GetHit_Poison),cond(map(Poison) = -1, map(GetHit_Poison),map(Poison) + map(GetHit_Poison)));
+			map(GetHit_Poison) := 0;
+		}
+		if map(GetHit_Freeze) != 0
+		{
+			map(Freeze) := cond(map(GetHit_Freeze) = -1,map(GetHit_Freeze),cond(map(Freeze) = -1, map(GetHit_Freeze),map(Freeze) + map(GetHit_Freeze)));
+			map(GetHit_Freeze) := 0;
+		}
+		if map(GetHit_Confused) != 0
+		{
+			map(Confused) := cond(map(GetHit_Confused) = -1,map(GetHit_Confused),cond(map(Confused) = -1, map(GetHit_Confused),map(Confused) + map(GetHit_Confused)));
+			map(GetHit_Confused) := 0;
+		}
+		if map(GetHit_Fear) != 0
+		{
+			map(Fear) := cond(map(GetHit_Fear) = -1,map(GetHit_Fear),cond(map(Fear) = -1, map(GetHit_Fear),map(Fear) + map(GetHit_Fear)));
+			map(GetHit_Fear) := 0;
+		}
+		if map(GetHit_Decay) != 0
+		{
+			map(Decay) := cond(map(GetHit_Decay) = -1,map(GetHit_Decay),cond(map(Decay) = -1, map(GetHit_Decay),map(Decay) + map(GetHit_Decay)));
+			map(GetHit_Decay) := 0;
+		}
+}
+[Function Apply()]
+ignorehitpause{
+	# Apply
+		# Buffs
+		if map(Apply_Regen) != 0
+		{
+			map(Regen) := cond(map(Apply_Regen) = -1,map(Apply_Regen),cond(map(Regen) = -1, map(Apply_Regen),map(Regen) + map(Apply_Regen)));
+			map(Apply_Regen) := 0;
+		}
+		
+		if map(Apply_ManaRegen) != 0
+		{
+			map(ManaRegen) := cond(map(Apply_ManaRegen) = -1,map(Apply_ManaRegen),cond(map(ManaRegen) = -1, map(Apply_ManaRegen),map(ManaRegen) + map(Apply_ManaRegen)));
+			map(Apply_ManaRegen) := 0;
+		}
+
+		# Debuffs
+		if map(Apply_Burn) != 0
+		{
+			map(Burn) := cond(map(Apply_Burn) = -1,map(Apply_Burn),cond(map(Burn) = -1, map(Apply_Burn),map(Burn) + map(Apply_Burn)));
+			map(Apply_Burn) := 0;
+		}
+		if map(Apply_Poison) != 0
+		{
+			map(Poison) := cond(map(Apply_Poison) = -1,map(Apply_Poison),cond(map(Poison) = -1, map(Apply_Poison),map(Poison) + map(Apply_Poison)));
+			map(Apply_Poison) := 0;
+		}
+		if map(Apply_Freeze) != 0
+		{
+			map(Freeze) := cond(map(Apply_Freeze) = -1,map(Apply_Freeze),cond(map(Freeze) = -1, map(Apply_Freeze),map(Freeze) + map(Apply_Freeze)));
+			map(Apply_Freeze) := 0;
+		}
+		if map(Apply_Confused) != 0
+		{
+			map(Confused) := cond(map(Apply_Confused) = -1,map(Apply_Confused),cond(map(Confused) = -1, map(Apply_Confused),map(Confused) + map(Apply_Confused)));
+			map(Apply_Confused) := 0;
+		}
+		if map(Apply_Fear) != 0
+		{
+			map(Fear) := cond(map(Apply_Fear) = -1,map(Apply_Fear),cond(map(Fear) = -1, map(Apply_Fear),map(Fear) + map(Apply_Fear)));
+			map(Apply_Fear) := 0;
+		}
+		if map(Apply_Decay) != 0
+		{
+			map(Decay) := cond(map(Apply_Decay) = -1,map(Apply_Decay),cond(map(Decay) = -1, map(Apply_Decay),map(Decay) + map(Apply_Decay)));
+			map(Apply_Decay) := 0;
+		}
+}
+[Function StatusEffect_Frame()]
+ignorehitpause{
+	# Player
+		# Buffs
+		if map(Regen) > 0 {map(Regen) := map(Regen) - 1;}
+		if map(ManaRegen) > 0 {map(ManaRegen) := map(ManaRegen) - 1;}
+		
+		# Debuffs
+		if map(Burn) > 0 {map(Burn) := map(Burn) - 1;}
+		if map(Poison) > 0 {map(Poison) := map(Poison) - 1;}
+		if map(Freeze) > 0 {map(Freeze) := map(Freeze) - 1;}
+		if map(Confused) > 0 {map(Confused) := map(Confused) - 1;}
+		if map(Fear) > 0 {map(Fear) := map(Fear) - 1;}
+		if map(Decay) > 0 {map(Decay) := map(Decay) - 1;}
+}
+[Function StatusEffect_Effect()]
+ignorehitpause{
+	# Effects
+		#Buffs
+		if map(Regen) != 0 && gameTime % 2 = 0 # heal player
+		{
+			lifeAdd{value:1}
+		}
+		if map(ManaRegen) != 0 # give power
+		{
+			powerAdd{value:1}
+		}
+
+		# Debuffs
+		if map(Burn) != 0 && gameTime % (1 + (cond(vel x > 0, vel x, vel x * -1) + cond(vel y > 0, vel y, vel y * -1))) = 0 # deal more damage the less you move
+		{
+			lifeAdd{value:-1}
+		}
+		if map(Poison) != 0 && gameTime % (2 + (cond(vel x > 0, vel x, vel x * -1) + cond(vel y > 0, vel y, vel y * -1))) != 0 # deal more damage the more you move
+		{
+			lifeAdd{value:-1}
+		}
+		if map(Freeze) != 0 # freeze
+		{
+			assertSpecial{flag:animFreeze}
+			ctrlSet{value:0}
+			map(Frozen) := 1;
+		}
+		else if (map(Freeze) = 0 || enemy, MoveHitVar(frame)) # remove freeze once you get hit
+		{
+			map(Freeze) := 0;
+			if !enemy, MoveHitVar(frame) && map(Frozen) {ctrlSet{value:1}}
+			#assertSpecial{enabled: 0;flag:animFreeze}
+		}
+
+		if map(Confused) != 0 # invert inputs
+		{
+			shiftInput{input: L; output: R}
+			shiftInput{input: D; output: U}
+			shiftInput{input: R; output: L}
+			shiftInput{input: d; output: w}
+			shiftInput{input: U; output: D}
+			shiftInput{input: w; output: d}
+			shiftInput{input: a; output: z}
+			shiftInput{input: b; output: y}
+			shiftInput{input: c; output: x}
+			shiftInput{input: x; output: c}
+			shiftInput{input: y; output: b}
+			shiftInput{input: z; output: a}
+		}
+		else if map(Fear) = 0 && map(Confused) = 0
+		{
+			shiftInput{input: none; output: none}
+		}
+
+		if map(Fear) != 0 # disable inputs and force them to move back / guard
+		{
+			notHitBy{value: SCA;redirectid:enemy, id}
+			shiftInput{input: a; output: none}
+			shiftInput{input: b; output: none}
+			shiftInput{input: c; output: none}
+			shiftInput{input: x; output: none}
+			shiftInput{input: y; output: none}
+			shiftInput{input: z; output: none}
+			shiftInput{input: s; output: none}
+		}
+		else if map(Fear) = 0 && map(Confused) = 0
+		{
+			shiftInput{input: none; output: none}
+		}
+		if map(Decay) != 0 # reduce power
+		{
+			powerAdd{value:-1}
+		}
+}
+# == Global States == #
+
+[StateDef +1]
+ignorehitpause if playerno < 9 && roundstate = 2 {
+	call StatusEffect_Frame();
+	# Disabled MoveHit and GetHit activation types to lessen the work the engine has to do
+	#if MoveHitVar(frame) && !MoveGuarded # MoveHit Activation
+	#{
+		#call MoveHit(); #applies status effect once move hits
+	#}
+	#if enemy, MoveHitVar(frame) && !enemy, MoveGuarded #GetHit Activation
+	#{
+		#call GetHit(); #applies status effect once you get hit
+	#}
+	call Apply(); #applies status effect anytime
+
+	call StatusEffect_Effect();
+}
+else ignorehitpause if roundstate != 2 && playerno < 9
+{
+	call ResetStatus();
+}
